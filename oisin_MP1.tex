@@ -1,0 +1,684 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{float}
+\usepackage{geometry}
+\usepackage{listings}
+\usepackage{xcolor}
+\geometry{margin=2.5cm}
+
+\lstset{
+    language=Matlab,
+    basicstyle=\small\ttfamily,
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    stepnumber=1,
+    frame=single,
+    breaklines=true,
+    tabsize=4,
+    keywordstyle=\color{blue},
+    commentstyle=\color{green!50!black},
+    stringstyle=\color{red!70!black},
+    showstringspaces=false,
+}
+
+\begin{document}
+
+% ============================================================
+\section{BJT Modelling}
+% ============================================================
+
+The NPN bipolar junction transistors $Q_1$ and $Q_3$ are modelled using the Ebers-Moll equations:
+\begin{equation}
+    I_C = I_S \left[\left(e^{V_{BE}/V_T} - 1\right)\left(1 - \frac{V_{BC}}{V_A}\right)
+          - \frac{1}{\alpha_R}\left(e^{V_{BC}/V_T} - 1\right)\right]
+    \label{eq:IC_NPN_full}
+\end{equation}
+\begin{equation}
+    I_B = I_S \left[\frac{1}{\beta_F}\left(e^{V_{BE}/V_T} - 1\right)
+          + \frac{1}{\beta_R}\left(e^{V_{BC}/V_T} - 1\right)\right]
+    \label{eq:IB_NPN_full}
+\end{equation}
+
+The PNP transistor $Q_2$ can be modelled using the same two equations, but since the
+base-emitter and base-collector voltages have reversed polarities to the NPN case, the
+emitter-base $V_{EB}$ and collector-base $V_{CB}$ voltages are used instead:
+\begin{equation}
+    I_C = I_S \left[\left(e^{V_{EB}/V_T} - 1\right)\left(1 - \frac{V_{CB}}{V_A}\right)
+          - \frac{1}{\alpha_R}\left(e^{V_{CB}/V_T} - 1\right)\right]
+    \label{eq:IC_PNP_full}
+\end{equation}
+\begin{equation}
+    I_B = I_S \left[\frac{1}{\beta_F}\left(e^{V_{EB}/V_T} - 1\right)
+          + \frac{1}{\beta_R}\left(e^{V_{CB}/V_T} - 1\right)\right]
+    \label{eq:IB_PNP_full}
+\end{equation}
+
+where $V_T = \frac{kT}{q}$ is the thermal voltage at temperature $T$, given as $26\,\text{mV}$
+(the standard value, assuming a temperature of $300\,\text{K}$), $I_S$ is the saturation current,
+$V_A$ is the Early voltage, $\alpha_R$ and $\beta_R$ are the common-base and common-emitter
+reverse current gains and $\alpha_F$ and $\beta_F$ are the common-base and common-emitter
+forward current gains.
+
+Assuming the circuit is appropriately biased, the three transistors operate in the forward-active
+region. In this region, the base-emitter voltage is very close to the threshold voltage of the
+base-emitter junction (around $0.7\,\text{V}$ for silicon-based transistors such as the ones used
+in the circuit), and the magnitude of the collector-emitter voltage is around a couple of volts.
+Therefore, for the NPN transistors:
+\begin{align*}
+    V_{BE} &\approx 0.7\,\text{V} \\
+    V_{CE} &\approx 1.5\,\text{V} \\
+    \therefore\; V_{BC} &= V_{BE} - V_{CE} \approx -0.8\,\text{V}
+\end{align*}
+
+For $V_T = 26\,\text{mV}$, the exponential terms in the Ebers-Moll equations
+(\ref{eq:IC_NPN_full}) and (\ref{eq:IB_NPN_full}) will be about:
+\begin{align*}
+    e^{V_{BE}/V_T} &\approx e^{26.923} = 4.93\times10^{11} \gg 1 \\
+    e^{V_{BC}/V_T} &\approx e^{-30.769}    = 4.337\times10^{-14} \approx 0
+\end{align*}
+
+Therefore, the contribution of the reverse currents to the total base and collector currents can
+be neglected, and the Ebers-Moll equations for the NPN transistors can be simplified to:
+\begin{equation}
+    I_C = I_S \cdot \left(e^{V_{BE}/V_T} - 1\right) \cdot \left(1 - \frac{V_{BC}}{V_A}\right)
+    \label{eq:IC_NPN}
+\end{equation}
+\begin{equation}
+    I_B = \frac{I_S}{\beta_F} \cdot \left(e^{V_{BE}/V_T} - 1\right)
+    \label{eq:IB_NPN}
+\end{equation}
+
+The same logic applies in the case of the PNP transistor, and equations
+(\ref{eq:IC_PNP_full}) and (\ref{eq:IB_PNP_full}) can be simplified to:
+\begin{equation}
+    I_C = I_S \cdot \left(e^{V_{EB}/V_T} - 1\right) \cdot \left(1 - \frac{V_{CB}}{V_A}\right)
+    \label{eq:IC_PNP}
+\end{equation}
+\begin{equation}
+    I_B = \frac{I_S}{\beta_F} \cdot \left(e^{V_{EB}/V_T} - 1\right)
+    \label{eq:IB_PNP}
+\end{equation}
+
+An important observation is that while in the forward-active region, the base current is only
+dependent on the base-emitter voltage.
+
+% ------------------------------------------------------------
+\subsection{Determining $\beta_F$}
+% ------------------------------------------------------------
+
+When the base-collector voltage is small in magnitude ($|V_{BC}| \approx 0$), the Early effect
+can be ignored and the relationship between the collector current and the base current is linear:
+\[
+    I_C = \beta_F \cdot I_B
+\]
+This occurs when $V_{BE} \approx V_{CE} \approx 0.7\,\text{V}$. From the DC output
+characteristics of the 2N3904 NPN BJT and the 2N3906 PNP BJT given in the laboratory handout,
+$\beta_F$ can be approximated for each transistor by noting the value of the collector current at
+$V_{CE} \approx 0.7\,\text{V}$ for the characteristic corresponding to the quiescent value of the
+base current of the transistor, and dividing the obtained collector current value by the value of
+the base current, $\beta_F = I_C / I_B$.
+
+Table~\ref{tab:beta} presents the quiescent values of the base current $I_B$, the base current
+of the chosen characteristic, the value of the collector current at $V_{CE} = 750\,\text{mV}$
+and the computed common-emitter forward current gain $\beta_F$ for each of the three transistors.
+For each transistor, the DC output characteristic corresponding to the base current closest to the
+quiescent value was chosen.
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{lcccc}
+        \toprule
+        BJT & Quiescent $I_B$ (mA) & Chosen $I_B$ (mA) & $I_C$ (mA) & $\beta_F$ \\
+        \midrule
+        $Q_1$ & 2.7   & 2.5 & 114& 45.6\\
+        $Q_2$ & 3.9   & 4   & 116& 29\\
+        $Q_3$ & 0.035 & 0.5 & 44& 88\\
+        \bottomrule
+    \end{tabular}
+    \caption{Results used for the calculation of $\beta_F$ for transistors $Q_1$, $Q_2$ and $Q_3$.}
+    \label{tab:beta}
+\end{table}
+
+% ------------------------------------------------------------
+\subsection{Determining $V_A$}
+% ------------------------------------------------------------
+
+In the forward-active region, the plot of $I_C$ versus $V_{CE}$ is a straight line when $I_B$
+is fixed. For fixed values of the base current $I_B$ and the base-emitter voltage $V_{BE}$,
+equation (\ref{eq:IC_NPN}) becomes:
+\begin{align}
+    I_C &= \beta_F \cdot I_B \cdot \left(1 - \frac{V_{BC}}{V_A}\right)
+         = \beta_F \cdot I_B \cdot \left(1 - \frac{V_{BE}}{V_A} + \frac{V_{CE}}{V_A}\right)
+         \notag \\[4pt]
+    I_C &= \beta_F \cdot I_B \cdot \left(1 - \frac{V_{BE}}{V_A}\right)
+         + \beta_F \cdot I_B \cdot \frac{V_{CE}}{V_A}
+         = h + m \cdot V_{CE}
+    \label{eq:VA_derivation}
+\end{align}
+where $h = \mathrm{const.} = \beta_F \cdot I_B \cdot \left(1 - \dfrac{V_{BE}}{V_A}\right)$ and
+$m = \mathrm{slope} = \dfrac{\beta_F \cdot I_B}{V_A}$.
+Therefore, the Early voltage is:
+\begin{equation}
+    V_A = \frac{\beta_F \cdot I_B}{m}
+    \label{eq:VA}
+\end{equation}
+
+The slope can be determined from the DC output characteristics. Table~\ref{tab:VA} shows the base
+current of the chosen characteristic plot, the measured slope and the calculated Early Voltage for
+each transistor.
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{lccccc}
+        \toprule
+        Transistor & $I_B$ (mA) & $\Delta y$ (mA) & $\Delta x$ (mV) & Slope $m$ (mA/mV) & $V_A$ (V) \\
+        \midrule
+        $Q_1$ & 2.5 & 6& 4466.9& $1.343\times10^{-3}$& 84.885\\
+        $Q_2$ & 4   & 8& 4333.6& $1.85\times10^{-3}$& 62.703\\
+        $Q_3$ & 0.5 & 2& 4666.8& $4.29\times10^{-4}$& 102.564\\
+        \bottomrule
+    \end{tabular}
+    \caption{Results used for the calculation of $V_A$ for transistors $Q_1$, $Q_2$ and $Q_3$.}
+    \label{tab:VA}
+\end{table}
+
+% ------------------------------------------------------------
+\subsection{Determining $I_S$}
+% ------------------------------------------------------------
+
+The base current is given by equation (\ref{eq:IB_NPN}):
+\[
+    I_B = \frac{I_S}{\beta_F} \cdot \left(e^{V_{BE}/V_T} - 1\right)
+\]
+For any value of the base current, the base-emitter voltage can be determined from the DC input
+characteristic of the transistor. Therefore, the only unknown is the saturation current $I_S$,
+which can be found by rearranging the equation:
+\begin{equation}
+    I_S = \frac{I_B \cdot \beta_F}{e^{V_{BE}/V_T} - 1}
+    \label{eq:IS}
+\end{equation}
+
+Table~\ref{tab:IS} shows the quiescent value of the base current and the corresponding
+base-emitter voltage for each transistor, together with the calculated value of $I_S$.
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{lccc}
+        \toprule
+        Transistor & $I_B$ (mA) & $V_{BE}$ (mV) & $I_S$ (A) \\
+        \midrule
+        $Q_1$ & 2.7   & 779.6& $1.17\times10^{-14}$\\
+        $Q_2$ & 3.9   & 788& $7.78\times10^{-15}$\\
+        $Q_3$ & 0.035 & 700& $6.25\times10^{-15}$\\
+        \bottomrule
+    \end{tabular}
+    \caption{Values used for the calculation of $I_S$ for transistors $Q_1$, $Q_2$ and $Q_3$.}
+    \label{tab:IS}
+\end{table}
+
+Table~\ref{tab:params} shows the determined parameters for the transistors used in the circuit.
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{lccc}
+        \toprule
+        Transistor & $\beta_F$ & $V_A$ (V) & $I_S$ (A) \\
+        \midrule
+        $Q_1$ & 45.6& 84.885& $1.17\times10^{-14}$\\
+        $Q_2$ & 29& 62.703& $7.78\times10^{-15}$\\
+        $Q_3$ & 88& 102.564& $6.25\times10^{-15}$\\
+        \bottomrule
+    \end{tabular}
+    \caption{Parameters of the transistors used in the circuit.}
+    \label{tab:params}
+\end{table}
+
+% ============================================================
+\section{Diode Modelling}
+% ============================================================
+
+Each diode is modelled as a diode described by the Shockley Diode equation in series with a
+resistor, as presented in Figure~\ref{fig:diode_model}.
+\begin{equation}
+    I_D = I_{SD} \cdot \left(\exp\!\left(\frac{V_D}{\eta V_T}\right) - 1\right)
+    \label{eq:shockley}
+\end{equation}
+
+\begin{figure}[H]
+    \centering
+    % Circuit: ideal diode + series resistor R_D
+    \begin{tabular}{c}
+        $+ \quad V_D \quad -$ \\[4pt]
+        $\longrightarrow\!\!\!\!\bigcirc\!\!\!\!\longrightarrow\!\!\!\![\,R_D\,]\!\!\!\!\longrightarrow$
+    \end{tabular}
+    \caption{Diode modelled as a Shockley diode in series with a bulk resistor $R_D$.}
+    \label{fig:diode_model}
+\end{figure}
+
+$I_{SD}$ is the diode's reverse saturation current, $V_T$ is the thermal voltage ($26\,\text{mV}$
+for a temperature of $300\,\text{K}$), and $\eta$ is the ideality factor (typically between 1
+and 2). The total voltage across the series combination is the sum of the voltage across the
+diode $V_D$ and the voltage across the resistor $V_R$. Ohm's law gives:
+\begin{equation}
+    V_R = R_D \cdot I_D
+    \label{eq:ohm}
+\end{equation}
+Rearranging equation~(\ref{eq:shockley}) for $V_D$ and substituting:
+\begin{equation}
+    V = \eta V_T \ln\!\left(\frac{I_D}{I_{SD}} + 1\right) + R_D \cdot I_D
+    \label{eq:diode_model}
+\end{equation}
+
+% ------------------------------------------------------------
+\subsection{Reverse Saturation Current $I_{SD}$}
+% ------------------------------------------------------------
+
+When the voltage across the diode is negative enough (less than $-1\,\text{V}$), the diode is
+far into the reverse bias region and the current flowing through it is not much larger than the
+reverse saturation current $I_{SD}$. The contribution of the bulk resistor to the total voltage
+drop is negligible (on the order of pico-volts). Therefore:
+\[
+    I_D = I_{SD}\cdot\left(\exp\!\left(\frac{-1}{0.7\eta}\right) - 1\right)
+        \approx I_{SD}(0 - 1) = -I_{SD}
+\]
+The value of the reverse saturation current is therefore taken as the magnitude of the current
+at $V = -1\,\text{V}$ from Table~1.1:
+\[
+    I_{SD} = 15.2\,\text{pA}
+\]
+
+% ------------------------------------------------------------
+\subsection{Curve Fitting}
+% ------------------------------------------------------------
+
+The coefficients $\eta$ and $R_D$ are found so that the mean square error between the computed
+voltage drop $V$ (given by equation~(\ref{eq:diode_model})) and the measured voltage drop (given
+in Table~1.1 from the laboratory handout) is minimised. The model is linear in the two unknowns:
+\[
+    V_k = \eta \cdot \underbrace{\left[V_T \ln\!\left(\frac{I_k}{I_{SD}} + 1\right)\right]}_{\ell_k}
+        + R_D \cdot I_k
+\]
+Let $(V_1, I_1),\,(V_2, I_2),\,\ldots,\,(V_N, I_N)$ be the $N = 26$ data points selected from
+Table~1.1 (every second entry, from $V = -600\,\text{mV}$ to $V = 960\,\text{mV}$; the entry
+at $V = -1\,\text{V}$ was used to determine $I_{SD}$ and is excluded). As the lecture notes
+state, Fermat's Theorem gives necessary conditions for minimality of the mean square error:
+\[
+    \frac{\partial\,\text{MSE}}{\partial\,\eta} = 0, \qquad
+    \frac{\partial\,\text{MSE}}{\partial R_D} = 0
+\]
+Setting $\partial\,\text{MSE}/\partial\,\eta = 0$ yields:
+\begin{equation}
+    p_0 + p_1 \cdot \eta + p_2 \cdot R_D = 0
+    \label{eq:normal1}
+\end{equation}
+where
+\[
+    p_0 = \sum_{k=1}^{N} -V_k \cdot V_T \ln\!\left(\frac{I_k}{I_{SD}}+1\right), \quad
+    p_1 = \sum_{k=1}^{N} \left[V_T \ln\!\left(\frac{I_k}{I_{SD}}+1\right)\right]^2, \quad
+    p_2 = \sum_{k=1}^{N} I_k \cdot V_T \ln\!\left(\frac{I_k}{I_{SD}}+1\right)
+\]
+Setting $\partial\,\text{MSE}/\partial R_D = 0$ yields:
+\begin{equation}
+    q_0 + q_1 \cdot \eta + q_2 \cdot R_D = 0
+    \label{eq:normal2}
+\end{equation}
+where
+\[
+    q_0 = \sum_{k=1}^{N} -V_k \cdot I_k, \qquad
+    q_1 = \sum_{k=1}^{N} V_T \ln\!\left(\frac{I_k}{I_{SD}}+1\right) \cdot I_k, \qquad
+    q_2 = \sum_{k=1}^{N} I_k^2
+\]
+
+The MATLAB function m-file \texttt{Diode\_Fit.m} that computes the coefficient values and
+solves the normal equations is presented in Figure~\ref{fig:diode_fit}.
+
+\begin{lstlisting}[caption={MATLAB function m-file \texttt{Diode\_Fit.m} that computes the
+         normal equation coefficients and solves for the diode parameters $\eta$ and $R_D$.},
+         label=fig:diode_fit]
+function [eta, R_D] = Diode_Fit(ISD, Vt)
+% [eta, R_D] = Diode_Fit(ISD, Vt)
+% Fits the diode model V = eta*Vt*ln(I/ISD + 1) + R_D*I to measured
+% data using least squares (normal equations), solved with Gauss_Elim.
+%
+% Input  ISD = reverse saturation current (A)
+%        Vt  = thermal voltage (V), typically 26e-3
+% Output eta = ideality factor
+%        R_D = bulk series resistance (Ohm)
+%
+% Data: every second entry from Table 1.1 in MP1.pdf (26 points),
+%       excluding the -1V entry used to determine ISD.
+%
+% Version 1: created 29/03/2026, O.O'Friel
+
+% --- Data from Table 1.1 (every second point, SI units) ---
+V_D_data = 1e-3 * [-600; -200; -100;  -40;  -20;    0;   20;   50; ...
+                     150;  250;  350;  400;  440;  480;  520;  560; ...
+                     600;  640;  680;  720;  760;  800;  840;  880; ...
+                     920;  960];
+
+I_D_data = [ -14.79e-12; -14.2e-12;  -12.8e-12;  -8.27e-12;  -5.07e-12; ...
+               0;          8.27e-12;   30e-12;    421e-12;     4.16e-9; ...
+              40.4e-9;   128e-9;      315e-9;    784e-9;       1.94e-6; ...
+               4.8e-6;    12e-6;      29.65e-6;   73.6e-6;   180e-6; ...
+             440e-6;      1.024e-3;    2.240e-3;   4.480e-3;   8.053e-3; ...
+              12.8e-3];
+
+% --- Pre-compute log term (outside loop, no magic numbers) ---
+ln_term   = Vt .* log(I_D_data ./ ISD + 1);
+
+% --- Normal equation coefficients (Fermat conditions on MSE) ---
+sum_ln_sq = sum(ln_term .^ 2);
+sum_I_ln  = sum(I_D_data .* ln_term);
+sum_V_ln  = sum(V_D_data .* ln_term);
+sum_I_sq  = sum(I_D_data .^ 2);
+sum_VI    = sum(V_D_data .* I_D_data);
+
+% --- Assemble and solve 2x2 normal equations system ---
+A_NE  = [sum_ln_sq, sum_I_ln; sum_I_ln, sum_I_sq];
+b_NE  = [sum_V_ln; sum_VI];
+c_fit = Gauss_Elim(A_NE, b_NE);
+
+eta = c_fit(1);
+R_D = c_fit(2);
+
+fprintf('=== Diode Curve Fit Results ===\n');
+fprintf('  eta = %.4f\n',    eta);
+fprintf('  R_D = %.4f Ohm\n', R_D);
+end
+\end{lstlisting}
+
+The resulting coefficient values are shown in Table~\ref{tab:diode_coeffs}.
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{lc}
+        \toprule
+        Coefficient & Obtained value \\
+        \midrule
+        $p_0$ & $-4.48054$ \\
+        $p_1$ & $2.57168$ \\
+        $p_2$ & $1.52125\times10^{-2}$ \\
+        $q_0$ & $-2.68845\times10^{-2}$ \\
+        $q_1$ & $1.52125\times10^{-2}$ \\
+        $q_2$ & $2.55060\times10^{-4}$ \\
+        \bottomrule
+    \end{tabular}
+    \caption{Obtained values for the coefficients in equations~(\ref{eq:normal1})
+             and~(\ref{eq:normal2}). Note $p_2 = q_1$ since both equal $\sum I_k \ell_k$.}
+    \label{tab:diode_coeffs}
+\end{table}
+
+This gives the following $2\times2$ system of linear equations with unknowns $\eta$ and $R_D$:
+\begin{equation}
+    \begin{cases}
+        2.57168\cdot\eta + 1.52125\times10^{-2}\cdot R_D = 4.48054 \\[4pt]
+        1.52125\times10^{-2}\cdot\eta + 2.55060\times10^{-4}\cdot R_D = 2.68845\times10^{-2}
+    \end{cases}
+    \label{eq:diode_system}
+\end{equation}
+The system is solved using \texttt{Gauss\_Elim.m}. The \texttt{Gauss\_Elim} algorithm
+converges to the following diode parameters:
+\[
+    \eta = 1.7286 \qquad R_D = 2.3037\,\Omega
+\]
+
+The system can also be solved using \texttt{Gauss\_Seidel.m}. A preliminary convergence
+investigation is required before iterating. The Gauss-Seidel iteration matrix is:
+\[
+    T_{GS} = -(D + L)^{-1}U
+\]
+where $D$, $L$, $U$ are the diagonal, strict lower, and strict upper parts of the coefficient
+matrix respectively. The spectral radius $\rho(T_{GS}) = \max|\lambda_i(T_{GS})|$ must satisfy
+$\rho < 1$ for convergence. For the system as written in~(\ref{eq:diode_system}), diagonal
+dominance does not hold in the second row
+($2.55060\times10^{-4} \not> 1.52125\times10^{-2}$), so the system is rescaled by
+substituting $R_D' = R_D / 100$:
+\begin{equation}
+    \begin{bmatrix} 2.57168 & 1.52125 \\ 1.52125 & 2.55060
+    \end{bmatrix}
+    \begin{bmatrix} \eta \\ R_D' \end{bmatrix}
+    =
+    \begin{bmatrix} 4.48054 \\ 2.68845\times10^{-2} \end{bmatrix}
+    \label{eq:diode_scaled}
+\end{equation}
+The rescaled matrix is strictly diagonally dominant in both rows
+($2.57168 > 1.52125$ and $2.55060 > 1.52125$), which guarantees convergence of Gauss-Seidel.
+The ideality factor $\eta$ is known to lie in the interval $[1, 2]$ for real silicon diodes:
+$\eta = 1$ corresponds to the ideal Shockley limit, while $\eta = 2$ arises when recombination
+currents dominate. The initial estimate $\eta_0 = 1.5$ is taken as the midpoint of this range,
+placing the starting point centrally within the feasible region without bias toward either
+extreme. The bulk resistance $R_D$ is a small parasitic quantity; for small-signal diodes it is
+typically of the order of a few ohms. The initial estimate $R_{D,0} = 3\,\Omega$
+(i.e.\ $R_{D,0}' = 0.03$) is therefore a physically motivated prior that places the starting
+point in the correct order of magnitude. The tolerance is set to $10^{-4}$, which is sufficient
+precision for the diode parameters. The maximum number of iterations is set to 20, which is
+the standard value used for iterative solvers of this type and is more than sufficient given
+the guaranteed convergence. The relaxation parameter $\omega$ is set to 1.
+
+The \texttt{Gauss\_Seidel} algorithm produces a spectral radius of $\rho = 0.352811 < 1$
+and converges within 6 iterations to the following solution:
+\[
+    \eta = 1.7286 \qquad R_D = 0.023054 \times 100 = 2.3054\,\Omega
+\]
+in close agreement with the Gaussian elimination result ($R_D = 2.3037\,\Omega$), with the
+small difference attributable to the finite convergence tolerance of $10^{-4}$.
+
+The MATLAB function m-file that implements Gaussian elimination with partial pivoting is
+presented in Figure~\ref{fig:gauss_elim}.
+
+\begin{lstlisting}[caption={MATLAB function m-file \texttt{Gauss\_Elim.m} that implements
+Gaussian elimination with partial pivoting.}, label=fig:gauss_elim]
+function sol = Gauss_Elim(A, b)
+%GAUSS_ELIM Solves a system of linear equations using Gaussian elimination
+% with partial pivoting.
+%   Gauss_Elim(A, b) solves the system of linear equations described by
+%   A * x = b using Gaussian elimination with partial pivoting, where A
+%   represents the coefficient matrix and b is the vector of constant terms.
+%
+%   Parameter A must be an n x n square matrix.
+%   Parameter b must be an n x 1 column vector.
+%
+%   The function returns the solution vector sol as an n x 1 vector.
+%
+%   Example usage: Consider the following system of linear equations:
+%
+%   2 * x1 + 1 * x2 = 5
+%   4 * x1 + 3 * x2 = 11
+%
+%   Gauss_Elim([2, 1; 4, 3], [5; 11]) returns the solution vector [2; 1].
+
+% Created by O.O'Friel, student no. 23338256
+% on 24/03/2026 for EEEN30150 - Modelling and Simulation
+
+% Version 1 - Gaussian elimination with partial pivoting and error checking
+
+% Validate input A
+sz = size(A);
+
+if numel(sz) ~= 2
+    error("Gauss_Elim: Parameter 'A' must be a 2-dimensional matrix\n");
+end
+
+if sz(1) ~= sz(2)
+    error("Gauss_Elim: Parameter 'A' must be a square matrix\n");
+end
+
+n = sz(1);
+
+% Validate input b
+if ~isequal(size(b), [n 1])
+    error("Gauss_Elim: Parameter 'b' must be an n x 1 column vector\n");
+end
+
+% Work on copies to avoid modifying inputs
+Ac = A;
+bc = b;
+
+% Forward elimination with partial pivoting
+for k = 1:n-1
+
+    % Find the row with the largest entry in column k from row k downwards
+    [~, piv] = max(abs(Ac(k:n, k)));
+    piv = piv + k - 1;   % convert to absolute row index
+
+    % Swap rows k and piv in both Ac and bc if required
+    if piv ~= k
+        Ac([k, piv], :) = Ac([piv, k], :);
+        bc([k, piv])    = bc([piv, k]);
+    end
+
+    % A zero pivot coefficient implies a singular matrix
+    if Ac(k, k) == 0
+        error("Gauss_Elim: Division by zero - singular system\n");
+    end
+
+    % Eliminate entries below the pivot in column k
+    for j = k+1:n
+        mult       = Ac(j, k) / Ac(k, k);
+        Ac(j, k:n) = Ac(j, k:n) - mult * Ac(k, k:n);
+        bc(j)      = bc(j)      - mult * bc(k);
+    end
+
+end
+
+% Back substitution
+sol = zeros(n, 1);
+for k = 0:n-1
+    sol(n-k) = (bc(n-k) - Ac(n-k, :) * sol) / Ac(n-k, n-k);
+end
+
+end
+\end{lstlisting}
+
+The MATLAB function m-file that implements the Gauss-Seidel iterative algorithm with SOR
+and spectral radius convergence check is presented in Figure~\ref{fig:gauss_seidel}.
+
+\begin{lstlisting}[caption={MATLAB function m-file \texttt{Gauss\_Seidel.m} implementing the
+         Gauss-Seidel iterative method with SOR relaxation and a preliminary spectral
+         radius convergence check.}, label=fig:gauss_seidel]
+function [sol, count, err] = Gauss_Seidel(A, b, x0, N, tol, omega)
+%GAUSS_SEIDEL Solves a system of linear equations using the Gauss-Seidel
+% method with relaxation and a preliminary convergence investigation.
+%   Gauss_Seidel(A, b, x0, N, tol, omega) solves the system described by
+%   A * x = b using the Gauss-Seidel iterative method, where A is the
+%   coefficient matrix and b is the vector of constant terms. The algorithm
+%   starts from initial guess x0 and attempts to converge to the desired
+%   tolerance within N iterations. Before iterating, the spectral radius of
+%   the Gauss-Seidel iteration matrix is computed as a convergence check.
+%
+%   Parameter A     must be an n x n square matrix.
+%   Parameter b     must be an n x 1 column vector.
+%   Parameter x0    must be an n x 1 column vector (initial guess).
+%   Parameter N     must be a positive integer (maximum number of iterations).
+%   Parameter tol   must be a positive real number (convergence tolerance).
+%   Parameter omega must be in the interval (0, 2) (relaxation factor).
+%
+%   The function returns the solution vector sol as an n x 1 vector, the
+%   number of iterations performed, and the final residual norm.
+%
+%   Example usage: Consider the following system of linear equations:
+%
+%   3 * x1 + 1 * x2 = 4
+%   1 * x1 + 3 * x2 = 4
+%
+%   Gauss_Seidel([3,1;1,3],[4;4],[0;0],20,1e-6,1) returns [1; 1].
+
+% Created by O.O'Friel, student no. 23338256
+% on 28/03/2026 for EEEN30150 - Modelling and Simulation
+
+% Version 1 - Gauss-Seidel with SOR relaxation and spectral radius check
+
+% Validate input A
+sz = size(A);
+
+if numel(sz) ~= 2
+    error("Gauss_Seidel: Parameter 'A' must be a 2-dimensional matrix\n");
+end
+
+if sz(1) ~= sz(2)
+    error("Gauss_Seidel: Parameter 'A' must be a square matrix\n");
+end
+
+n = sz(1);
+
+% Validate remaining inputs
+if ~isequal(size(b), [n 1])
+    error("Gauss_Seidel: Parameter 'b' must be an n x 1 column vector\n");
+end
+
+if ~isnumeric(x0) || ~isvector(x0)
+    error("Gauss_Seidel: Parameter 'x0' must be a vector\n");
+end
+
+if ~isscalar(N) || ~isreal(N) || N <= 1
+    error("Gauss_Seidel: Parameter 'N' must be an integer greater than 1\n");
+end
+
+if ~isscalar(tol) || ~isreal(tol) || tol <= 0
+    error("Gauss_Seidel: Parameter 'tol' must be a positive real number\n");
+end
+
+% If omega is outside (0,2), reset to 1 (no relaxation)
+if omega <= 0 || omega >= 2
+    omega = 1;
+end
+
+N = floor(N);
+
+% Preliminary convergence investigation via spectral radius
+% Decompose A into diagonal D_mat, strict lower L_mat, strict upper U_mat
+D_mat = diag(diag(A));
+L_mat = tril(A, -1);
+U_mat = triu(A,  1);
+
+% Gauss-Seidel iteration matrix: T_iter = -(D_mat + L_mat)^{-1} * U_mat
+T_iter = -(D_mat + L_mat) \ U_mat;
+rho    = max(abs(eig(T_iter)));
+
+fprintf('Gauss_Seidel: spectral radius = %.6f\n', rho);
+
+if rho >= 1
+    warning("Gauss_Seidel: spectral radius >= 1, convergence not guaranteed\n");
+end
+
+% Gauss-Seidel iteration with SOR relaxation
+x_cur = x0;
+
+for count = 1:N+1
+
+    % Terminate if maximum iterations reached
+    if count == N+1
+        fprintf('Gauss_Seidel: Maximum number of iterations reached\n');
+        break;
+    end
+
+    x_upd = x_cur;   % initialise updated estimate from current values
+
+    % Loop over each unknown
+    for i = 1:n
+        s_hi  = A(i, i+1:n) * x_cur(i+1:n);   % old values  (j > i)
+        s_lo  = A(i, 1:i-1) * x_upd(1:i-1);   % new values  (j < i)
+        x_gs  = (b(i) - s_hi - s_lo) / A(i, i);
+        x_upd(i) = (1 - omega) * x_cur(i) + omega * x_gs;
+    end
+
+    % Update estimate and check convergence
+    x_cur = x_upd;
+
+    if norm(A * x_cur - b) < tol
+        fprintf('Gauss_Seidel: converged in %d iterations\n', count);
+        break;
+    end
+
+end
+
+sol = x_cur;
+err = norm(A * sol - b);
+
+end
+\end{lstlisting}
+
+\end{document}
+
